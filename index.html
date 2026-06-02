@@ -1,0 +1,1254 @@
+import { useState, useEffect, useRef, useCallback, memo } from "react";
+
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0e1a;--bg2:#0f1525;--bg3:#151d35;--bg4:#1a2440;
+  --accent:#4f8ef7;--accent2:#7c3aed;--gold:#f59e0b;
+  --green:#10b981;--red:#ef4444;--orange:#f97316;--pink:#ec4899;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --glow:0 0 20px rgba(79,142,247,0.15);--r:10px;
+}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.btn{cursor:pointer;border:none;outline:none;font-family:'Outfit',sans-serif;font-size:14px;font-weight:500;border-radius:8px;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:var(--accent);color:white;padding:8px 18px;}
+.btn-primary:hover{background:#6ba0f8;transform:translateY(-1px);}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2);padding:8px 18px;}
+.btn-ghost:hover{background:var(--bg3);color:var(--text);}
+.btn-danger{background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.25);padding:6px 14px;}
+.btn-danger:hover{background:rgba(239,68,68,0.25);}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn-start{background:rgba(16,185,129,0.12);color:var(--green);border:1px solid rgba(16,185,129,0.3);padding:7px 16px;}
+.btn-start:hover{background:rgba(16,185,129,0.22);}
+.btn-started{background:rgba(245,158,11,0.12);color:var(--gold);border:1px solid rgba(245,158,11,0.3);padding:7px 16px;}
+.btn-started:hover{background:rgba(245,158,11,0.22);}
+.input{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:9px 14px;border-radius:8px;font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:border 0.2s;width:100%;}
+.input:focus{border-color:var(--accent);}
+.input::placeholder{color:var(--text3);}
+select.input{cursor:pointer;}
+textarea.input{resize:vertical;min-height:90px;line-height:1.5;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);}
+.nav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 24px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.lang-btn{padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all 0.15s;}
+.lang-btn.active{background:var(--accent);color:white;border-color:var(--accent);}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:14px;transition:all 0.15s;color:var(--text2);}
+.sidebar-item:hover{background:var(--bg3);color:var(--text);}
+.sidebar-item.active{background:rgba(79,142,247,0.12);color:var(--accent);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:flex-start;justify-content:center;z-index:1000;padding:20px;backdrop-filter:blur(4px);overflow-y:auto;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:100%;max-width:860px;margin:auto;}
+.modal-header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg2);z-index:10;border-radius:14px 14px 0 0;}
+.modal-body{padding:24px;}
+.modal-footer{padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+.stat-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px 20px;}
+.xp-bar{background:var(--bg4);border-radius:99px;height:8px;overflow:hidden;}
+.xp-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 0.5s ease;}
+.star{cursor:pointer;font-size:18px;transition:transform 0.1s;}
+.star:hover{transform:scale(1.2);}
+.topic-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:all 0.2s;}
+.topic-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--glow);}
+.topic-card.completed{border-color:rgba(16,185,129,0.3);}
+.topic-card.started{border-color:rgba(245,158,11,0.3);}
+.problem-row{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;transition:background 0.15s;}
+.problem-row:hover{background:var(--bg3);}
+.problem-row:last-child{border-bottom:none;}
+.level-pill{padding:5px 16px;border-radius:99px;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;border:2px solid transparent;}
+.checkbox-custom{width:18px;height:18px;border-radius:5px;border:2px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;}
+.checkbox-custom.checked{background:var(--green);border-color:var(--green);}
+.streak-flame{font-size:28px;filter:drop-shadow(0 0 8px rgba(249,115,22,0.6));}
+.avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.leaderboard-row{display:flex;align-items:center;gap:14px;padding:10px 16px;border-radius:8px;transition:background 0.15s;}
+.leaderboard-row:hover{background:var(--bg3);}
+.tab{padding:7px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;transition:all 0.15s;color:var(--text2);border:1px solid transparent;}
+.tab.active{background:var(--bg3);color:var(--text);border-color:var(--border2);}
+.diff-badge{padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:0.04em;}
+.diff-easy{background:rgba(16,185,129,0.15);color:#34d399;}
+.diff-medium{background:rgba(245,158,11,0.15);color:#fbbf24;}
+.diff-hard{background:rgba(239,68,68,0.15);color:#f87171;}
+.diff-vhard{background:rgba(167,139,250,0.15);color:#c084fc;}
+.diff-extreme{background:rgba(236,72,153,0.15);color:#f472b6;}
+.notification{position:fixed;top:68px;right:20px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;z-index:2000;display:flex;align-items:center;gap:10px;animation:slideIn 0.3s ease;max-width:300px;font-size:14px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
+.fade-in{animation:fadeIn 0.3s ease;}
+.slide-in{animation:slideIn 0.3s ease;}
+/* Rich Editor */
+.editor-toolbar{display:flex;flex-wrap:wrap;gap:4px;padding:8px;background:var(--bg4);border:1px solid var(--border2);border-bottom:none;border-radius:8px 8px 0 0;}
+.editor-toolbar button{background:transparent;border:1px solid transparent;color:var(--text2);padding:4px 9px;border-radius:5px;cursor:pointer;font-size:12px;font-family:'Outfit',sans-serif;font-weight:500;transition:all 0.15s;}
+.editor-toolbar button:hover{background:var(--bg3);color:var(--text);border-color:var(--border2);}
+.editor-toolbar .sep{width:1px;background:var(--border2);margin:2px 2px;}
+.editor-area{background:var(--bg3);border:1px solid var(--border2);border-radius:0 0 8px 8px;min-height:300px;padding:14px;font-family:'Outfit',sans-serif;font-size:14px;color:var(--text);outline:none;line-height:1.7;white-space:pre-wrap;}
+.editor-area:focus{border-color:var(--accent);}
+.editor-area code{font-family:'JetBrains Mono',monospace;background:var(--bg4);padding:2px 6px;border-radius:4px;font-size:13px;color:#7dd3fc;}
+.editor-area pre{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px;overflow-x:auto;margin:8px 0;color:#a5f3fc;}
+/* Prose display */
+.prose{color:var(--text);line-height:1.7;}
+.prose p{margin-bottom:10px;}
+.prose h2{font-size:19px;margin:18px 0 8px;color:var(--text);}
+.prose h3{font-size:15px;margin:14px 0 6px;color:var(--text);}
+.prose strong{color:var(--text);font-weight:600;}
+.prose code{font-family:'JetBrains Mono',monospace;background:var(--bg4);padding:2px 6px;border-radius:4px;font-size:13px;color:#7dd3fc;}
+.prose pre{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:16px;overflow-x:auto;margin:10px 0;}
+.prose pre code{background:none;padding:0;color:#a5f3fc;font-size:13px;}
+.prose ul{padding-left:20px;margin-bottom:10px;}
+.prose li{margin-bottom:4px;}
+.yt-embed{border-radius:10px;overflow:hidden;width:100%;aspect-ratio:16/9;border:1px solid var(--border);}
+iframe{border:none;width:100%;height:100%;}
+.role-badge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.04em;}
+.role-admin{background:rgba(79,142,247,0.15);color:#7dd3fc;}
+.role-setter{background:rgba(124,58,237,0.15);color:#c084fc;}
+.role-user{background:rgba(16,185,129,0.12);color:#34d399;}
+/* Privacy toggle */
+.privacy-toggle{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;cursor:pointer;transition:all 0.2s;font-size:13px;}
+.privacy-toggle.public{border-color:rgba(16,185,129,0.35);color:var(--green);}
+.privacy-toggle.private{border-color:rgba(79,142,247,0.35);color:var(--accent);}
+/* Status badge */
+.status-badge{padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;}
+.status-not-started{background:rgba(100,116,139,0.15);color:#94a3b8;}
+.status-started{background:rgba(245,158,11,0.15);color:#fbbf24;}
+.status-completed{background:rgba(16,185,129,0.15);color:#34d399;}
+/* Private badge */
+.private-badge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:rgba(79,142,247,0.12);color:#7dd3fc;}
+`;
+
+const LEVELS = [
+  { id:"bronze", label:{en:"Bronze",ar:"برونز"}, color:"#cd7f32", bg:"rgba(205,127,50,0.12)", border:"rgba(205,127,50,0.35)", icon:"🥉" },
+  { id:"silver", label:{en:"Silver",ar:"فضي"}, color:"#94a3b8", bg:"rgba(148,163,184,0.1)", border:"rgba(148,163,184,0.3)", icon:"🥈" },
+  { id:"gold", label:{en:"Gold",ar:"ذهبي"}, color:"#f59e0b", bg:"rgba(245,158,11,0.1)", border:"rgba(245,158,11,0.3)", icon:"🥇" },
+  { id:"platinum", label:{en:"Platinum",ar:"بلاتيني"}, color:"#06b6d4", bg:"rgba(6,182,212,0.1)", border:"rgba(6,182,212,0.3)", icon:"💎" },
+  { id:"diamond", label:{en:"Diamond",ar:"ألماس"}, color:"#818cf8", bg:"rgba(129,140,248,0.12)", border:"rgba(129,140,248,0.35)", icon:"♟️" },
+];
+
+const XP_RANKS = [
+  { name:{en:"Newbie",ar:"مبتدئ"}, min:0, color:"#64748b" },
+  { name:{en:"Apprentice",ar:"متدرب"}, min:200, color:"#10b981" },
+  { name:{en:"Coder",ar:"مبرمج"}, min:600, color:"#3b82f6" },
+  { name:{en:"Expert",ar:"خبير"}, min:1400, color:"#8b5cf6" },
+  { name:{en:"Master",ar:"محترف"}, min:2800, color:"#f59e0b" },
+  { name:{en:"Grandmaster",ar:"أستاذ عظيم"}, min:5000, color:"#ef4444" },
+  { name:{en:"Legend",ar:"أسطورة"}, min:9000, color:"#ec4899" },
+];
+
+const DIFF_LABELS = {
+  easy:{en:"Easy",ar:"سهل"},medium:{en:"Medium",ar:"متوسط"},
+  hard:{en:"Hard",ar:"صعب"},vhard:{en:"Very Hard",ar:"صعب جداً"},extreme:{en:"Extreme",ar:"أقصى"},
+};
+const DIFF_XP = {easy:10,medium:25,hard:50,vhard:100,extreme:200};
+const DIFF_ORDER = ["easy","medium","hard","vhard","extreme"];
+
+const ROLES = {
+  admin:  {label:{en:"Admin",ar:"أدمن"}, css:"role-admin"},
+  setter: {label:{en:"Problem Setter",ar:"محرر المسائل"}, css:"role-setter"},
+  user:   {label:{en:"User",ar:"مستخدم"}, css:"role-user"},
+};
+
+function getXpRank(xp) {
+  let rank=XP_RANKS[0];
+  for(const r of XP_RANKS){if(xp>=r.min)rank=r;}
+  const idx=XP_RANKS.indexOf(rank);
+  const next=XP_RANKS[idx+1];
+  const pct=next?Math.min(100,((xp-rank.min)/(next.min-rank.min))*100):100;
+  return{...rank,pct,nextXp:next?next.min:null};
+}
+
+// ─── STORE ────────────────────────────────────────────────────────────────────
+const INIT = {
+  topics:[],problems:[],
+  users:[
+    {id:"u1",username:"admin",name:"Admin",email:"admin@algo.dev",role:"admin",xp:5200,streak:14,lastSolve:Date.now(),solvedProblems:[],startedTopics:[],avatar:"#4f8ef7"},
+    {id:"u2",username:"setter1",name:"Ahmed Setter",email:"setter@algo.dev",role:"setter",xp:1800,streak:5,lastSolve:Date.now(),solvedProblems:[],startedTopics:[],avatar:"#7c3aed"},
+    {id:"u3",username:"sara_cp",name:"Sara Ahmed",email:"sara@example.com",role:"user",xp:3400,streak:7,lastSolve:Date.now()-86400000,solvedProblems:[],startedTopics:[],avatar:"#10b981"},
+    {id:"u4",username:"omar_x",name:"Omar Khalid",email:"omar@example.com",role:"user",xp:8100,streak:32,lastSolve:Date.now(),solvedProblems:[],startedTopics:[],avatar:"#f59e0b"},
+    {id:"u5",username:"lina_dev",name:"Lina Mustafa",email:"lina@example.com",role:"user",xp:1200,streak:3,lastSolve:Date.now()-172800000,solvedProblems:[],startedTopics:[],avatar:"#ec4899"},
+  ],
+  currentUser:"u1",lang:"en",page:"home",
+};
+
+function useStore(){
+  const [state,setState]=useState(()=>{
+    try{const s=localStorage.getItem("algopath_v3");if(s)return{...INIT,...JSON.parse(s)};}catch{}
+    return INIT;
+  });
+  const update=useCallback((fn)=>setState(prev=>{
+    const next=typeof fn==="function"?fn({...prev}):{...prev,...fn};
+    try{localStorage.setItem("algopath_v3",JSON.stringify(next));}catch{}
+    return next;
+  }),[]);
+  return[state,update];
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function isPrivileged(role){return role==="admin"||role==="setter";}
+
+function canSeeTopicFn(topic, role){
+  if(!topic) return false;
+  if(topic.visibility==="private") return isPrivileged(role);
+  return true;
+}
+
+// ─── SMALL COMPONENTS ─────────────────────────────────────────────────────────
+function Stars({value=0,onChange,size=18}){
+  const[hover,setHover]=useState(0);
+  return(
+    <div style={{display:"flex",gap:2}}>
+      {[1,2,3,4,5].map(i=>(
+        <span key={i} className="star" style={{fontSize:size,color:i<=(hover||value)?"#f59e0b":"#334155"}}
+          onMouseEnter={()=>onChange&&setHover(i)} onMouseLeave={()=>onChange&&setHover(0)}
+          onClick={()=>onChange&&onChange(i)}>★</span>
+      ))}
+    </div>
+  );
+}
+
+function DiffBadge({diff,lang}){
+  return <span className={`diff-badge diff-${diff}`}>{DIFF_LABELS[diff]?.[lang]||diff}</span>;
+}
+
+function Avatar({user,size=36}){
+  const initials=(user?.name||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  return(
+    <div className="avatar" style={{width:size,height:size,fontSize:size*0.38,background:user?.avatar||"#4f8ef7",color:"white"}}>
+      {initials}
+    </div>
+  );
+}
+
+function RoleBadge({role,lang}){
+  const r=ROLES[role]||ROLES.user;
+  return <span className={`role-badge ${r.css}`}>{r.label[lang]}</span>;
+}
+
+function Notification({msg,type="success",onDone}){
+  useEffect(()=>{const t=setTimeout(onDone,3000);return()=>clearTimeout(t);},[]);
+  const icon=type==="xp"?"⚡":type==="success"?"✅":"ℹ️";
+  return(
+    <div className="notification">
+      <span style={{fontSize:20}}>{icon}</span>
+      <span>{msg}</span>
+    </div>
+  );
+}
+
+function Modal({title,children,footer,onClose,wide}){
+  return(
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal fade-in" style={{maxWidth:wide?980:860}}>
+        <div className="modal-header">
+          <h3 style={{fontSize:16}}>{title}</h3>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">{children}</div>
+        {footer&&<div className="modal-footer">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ─── RICH EDITOR (unified: text + video + code inline) ────────────────────────
+function RichEditor({initialValue="",onChange,lang}){
+  const ref=useRef(null);
+  useEffect(()=>{
+    if(ref.current&&ref.current.innerHTML!==initialValue){
+      ref.current.innerHTML=initialValue||"";
+    }
+  },[]);
+
+  function cmd(command,value=null){
+    ref.current?.focus();
+    document.execCommand(command,false,value);
+    fireChange();
+  }
+
+  function fireChange(){
+    setTimeout(()=>onChange&&onChange(ref.current?.innerHTML||""),0);
+  }
+
+  function insertYouTube(){
+    const url=prompt(lang==="ar"?"رابط يوتيوب:":"YouTube URL:");
+    if(!url)return;
+    const ytId=url.match(/(?:v=|youtu\.be\/)([^&?]+)/)?.[1];
+    if(!ytId){alert("Invalid YouTube URL");return;}
+    const titleInput=prompt(lang==="ar"?"عنوان الفيديو (اختياري):":"Video title (optional):")|| "";
+    ref.current?.focus();
+    const titleHtml=titleInput?`<p style="font-weight:600;margin-bottom:8px;color:#e2e8f0;">${titleInput}</p>`:"";
+    const html=`<div class="yt-block" contenteditable="false" style="margin:16px 0;">
+      ${titleHtml}
+      <div style="border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);aspect-ratio:16/9;">
+        <iframe width="100%" height="100%" src="https://www.youtube.com/embed/${ytId}" allowfullscreen style="border:none;display:block;"></iframe>
+      </div>
+    </div><p><br></p>`;
+    document.execCommand("insertHTML",false,html);
+    fireChange();
+  }
+
+  function insertCodeBlock(){
+    const langChoice=prompt("Language (e.g. cpp, python, java)","cpp")||"cpp";
+    ref.current?.focus();
+    const html=`<div class="code-block" contenteditable="false" style="margin:16px 0;background:#0a0e1a;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.08);">
+        <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">${langChoice}</span>
+      </div>
+      <pre style="margin:0;padding:16px;overflow-x:auto;"><code class="language-${langChoice}" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#a5f3fc;white-space:pre;">// write your code here
+</code></pre>
+    </div><p><br></p>`;
+    document.execCommand("insertHTML",false,html);
+    fireChange();
+  }
+
+  function insertHeading(tag){
+    document.execCommand("formatBlock",false,tag);
+    fireChange();
+  }
+
+  const TB=[
+    {label:"B",title:"Bold",action:()=>cmd("bold"),style:{fontWeight:700}},
+    {label:"I",title:"Italic",action:()=>cmd("italic"),style:{fontStyle:"italic"}},
+    {label:"U",title:"Underline",action:()=>cmd("underline"),style:{textDecoration:"underline"}},
+    null,
+    {label:"H2",title:"Heading 2",action:()=>insertHeading("h2")},
+    {label:"H3",title:"Heading 3",action:()=>insertHeading("h3")},
+    {label:"P",title:"Paragraph",action:()=>insertHeading("p")},
+    null,
+    {label:"• List",title:"Bullet list",action:()=>cmd("insertUnorderedList")},
+    {label:"` Code",title:"Inline code",action:()=>{
+      const sel=window.getSelection();
+      const text=sel?.toString()||"code";
+      cmd("insertHTML",`<code>${text}</code>`);
+    }},
+    null,
+    {label:"▶ Video",title:"Embed YouTube video inline",action:insertYouTube,style:{color:"#f87171"}},
+    {label:"</> Block",title:"Insert code block",action:insertCodeBlock,style:{color:"#7dd3fc"}},
+  ];
+
+  return(
+    <div>
+      <div className="editor-toolbar">
+        {TB.map((b,i)=>b===null?<div key={i} className="sep"/>:(
+          <button key={i} title={b.title} style={b.style||{}} onClick={e=>{e.preventDefault();b.action();}}>
+            {b.label}
+          </button>
+        ))}
+      </div>
+      <div
+        ref={ref}
+        className="editor-area"
+        contentEditable
+        suppressContentEditableWarning
+        onInput={fireChange}
+        dir={lang==="ar"?"rtl":"ltr"}
+      />
+    </div>
+  );
+}
+
+// ─── FIELD COMPONENTS ─────────────────────────────────────────────────────────
+const Field=memo(function Field({label,name,defaultValue="",onChange,type="text",options,rows}){
+  const ref=useRef(null);
+  useEffect(()=>{if(ref.current)ref.current.value=defaultValue||"";},[]);
+
+  const handler=useCallback(e=>onChange&&onChange(name,e.target.value),[name,onChange]);
+
+  if(options){
+    return(
+      <div style={{marginBottom:14}}>
+        {label&&<label style={{fontSize:13,color:"var(--text2)",display:"block",marginBottom:5}}>{label}</label>}
+        <select ref={ref} className="input" defaultValue={defaultValue} onChange={handler}>{options}</select>
+      </div>
+    );
+  }
+  if(type==="textarea"){
+    return(
+      <div style={{marginBottom:14}}>
+        {label&&<label style={{fontSize:13,color:"var(--text2)",display:"block",marginBottom:5}}>{label}</label>}
+        <textarea ref={ref} className="input" defaultValue={defaultValue} onChange={handler} rows={rows||4}/>
+      </div>
+    );
+  }
+  return(
+    <div style={{marginBottom:14}}>
+      {label&&<label style={{fontSize:13,color:"var(--text2)",display:"block",marginBottom:5}}>{label}</label>}
+      <input ref={ref} type={type} className="input" defaultValue={defaultValue} onChange={handler}/>
+    </div>
+  );
+});
+
+// ─── NAVBAR ───────────────────────────────────────────────────────────────────
+function Navbar({state,update,currentUser,setPage}){
+  const[open,setOpen]=useState(false);
+  const lang=state.lang;
+  const canAdmin=isPrivileged(currentUser?.role);
+
+  return(
+    <nav className="nav">
+      <div style={{display:"flex",alignItems:"center",gap:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setPage("home")}>
+          <div style={{width:30,height:30,background:"var(--accent)",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>⚡</div>
+          <span style={{fontWeight:700,fontSize:17,letterSpacing:"-0.02em"}}>AlgoPath</span>
+        </div>
+        <div style={{display:"flex",gap:4}}>
+          {["home","leaderboard"].map(p=>(
+            <button key={p} className="btn btn-ghost" style={{padding:"5px 14px",fontSize:13,border:"none",color:state.page===p?"var(--text)":"var(--text2)"}} onClick={()=>setPage(p)}>
+              {p==="home"?(lang==="ar"?"الرئيسية":"Home"):(lang==="ar"?"المتصدرون":"Leaderboard")}
+            </button>
+          ))}
+          {canAdmin&&(
+            <button className="btn btn-ghost" style={{padding:"5px 14px",fontSize:13,border:"none",color:state.page==="admin"?"var(--accent)":"var(--text2)"}} onClick={()=>setPage("admin")}>
+              {lang==="ar"?"لوحة التحكم":"Dashboard"}
+            </button>
+          )}
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <div style={{display:"flex",gap:4}}>
+          <button className={`lang-btn ${lang==="en"?"active":""}`} onClick={()=>update(s=>({...s,lang:"en"}))}>EN</button>
+          <button className={`lang-btn ${lang==="ar"?"active":""}`} onClick={()=>update(s=>({...s,lang:"ar"}))}>AR</button>
+        </div>
+        <div style={{position:"relative"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"4px 10px",borderRadius:8,background:"var(--bg3)",border:"1px solid var(--border)"}} onClick={()=>setOpen(!open)}>
+            <Avatar user={currentUser} size={26}/>
+            <span style={{fontSize:13,fontWeight:500}}>{currentUser?.name?.split(" ")[0]}</span>
+            <span style={{color:"var(--text3)",fontSize:10}}>▼</span>
+          </div>
+          {open&&(
+            <div style={{position:"absolute",top:42,right:0,background:"var(--bg2)",border:"1px solid var(--border2)",borderRadius:10,padding:8,zIndex:200,minWidth:180,boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}>
+              <div style={{padding:"8px 12px",borderBottom:"1px solid var(--border)",marginBottom:6}}>
+                <div style={{fontSize:13,fontWeight:600}}>{currentUser?.name}</div>
+                <RoleBadge role={currentUser?.role} lang={lang}/>
+              </div>
+              <div className="sidebar-item" onClick={()=>{setPage("profile");setOpen(false);}}>
+                👤 {lang==="ar"?"ملفي":"Profile"}
+              </div>
+              <div style={{borderTop:"1px solid var(--border)",marginTop:6,paddingTop:6}}>
+                <div style={{fontSize:11,color:"var(--text3)",padding:"4px 12px"}}>{lang==="ar"?"تبديل الحساب":"Switch Account"}</div>
+                {state.users.map(u=>u.id!==state.currentUser&&(
+                  <div key={u.id} className="sidebar-item" onClick={()=>{update(s=>({...s,currentUser:u.id}));setOpen(false);}}>
+                    <Avatar user={u} size={20}/> <span style={{flex:1}}>{u.name}</span> <RoleBadge role={u.role} lang={lang}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// ─── HOME PAGE ────────────────────────────────────────────────────────────────
+function StreakCalendar({streak}){
+  const days=Array.from({length:30},(_,i)=>i<streak);
+  return(
+    <div style={{display:"grid",gridTemplateColumns:"repeat(10,1fr)",gap:4,marginTop:8}}>
+      {days.map((a,i)=><div key={i} style={{width:20,height:20,borderRadius:4,background:a?"var(--orange)":"var(--bg4)",opacity:a?1:0.4}}/>)}
+    </div>
+  );
+}
+
+function HomePage({state,update,currentUser}){
+  const[selLevel,setSelLevel]=useState(null);
+  const[selTopic,setSelTopic]=useState(null);
+  const lang=state.lang;
+  const userSolved=currentUser?.solvedProblems||[];
+  const userStarted=currentUser?.startedTopics||[];
+  const rank=getXpRank(currentUser?.xp||0);
+  const role=currentUser?.role||"user";
+
+  function startTopic(topic,e){
+    e.stopPropagation();
+    const key=topic.id;
+    if(userStarted.includes(key)||userSolved.includes(`topic_${key}`))return;
+    update(s=>({...s,
+      users:s.users.map(u=>u.id===s.currentUser?{...u,startedTopics:[...(u.startedTopics||[]),key]}:u),
+      notif:{msg:lang==="ar"?"بدأت الموضوع!":"Topic started!",type:"success"}
+    }));
+  }
+
+  function solveProblem(p){
+    if(userSolved.includes(p.id))return;
+    const xp=DIFF_XP[p.difficulty]||10;
+    update(s=>({...s,
+      users:s.users.map(u=>u.id===s.currentUser?{...u,xp:u.xp+xp,solvedProblems:[...u.solvedProblems,p.id],lastSolve:Date.now()}:u),
+      notif:{msg:`+${xp} XP`,type:"xp"}
+    }));
+  }
+
+  function completeTopic(topic){
+    const key=`topic_${topic.id}`;
+    if(userSolved.includes(key))return;
+    update(s=>({...s,
+      users:s.users.map(u=>u.id===s.currentUser?{...u,xp:u.xp+50,solvedProblems:[...u.solvedProblems,key],lastSolve:Date.now()}:u),
+      notif:{msg:`+50 XP — ${lang==="ar"?"اكتمل الموضوع!":"Topic completed!"}`,type:"xp"}
+    }));
+  }
+
+  if(selTopic) return <TopicView topic={selTopic} state={state} update={update} currentUser={currentUser}
+    onBack={()=>setSelTopic(null)} solveProblem={solveProblem} completeTopic={completeTopic} startTopic={startTopic}/>;
+
+  // Filter topics by visibility
+  const visibleTopics=state.topics.filter(t=>canSeeTopicFn(t, role));
+  const levelTopics=selLevel?visibleTopics.filter(t=>t.level===selLevel):[];
+
+  return(
+    <div style={{padding:"28px 32px",maxWidth:1100,margin:"0 auto"}} className="fade-in">
+      {state.notif&&<Notification msg={state.notif.msg} type={state.notif.type} onDone={()=>update(s=>({...s,notif:null}))}/>}
+      {/* Stats */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:28}}>
+        <div className="stat-card">
+          <div style={{fontSize:12,color:"var(--text3)",marginBottom:4}}>{lang==="ar"?"رتبتك":"Your Rank"}</div>
+          <div style={{fontSize:19,fontWeight:700,color:rank.color,fontFamily:"JetBrains Mono"}}>{rank.name[lang]}</div>
+          <div style={{marginTop:8}}>
+            <div className="xp-bar"><div className="xp-fill" style={{width:`${rank.pct}%`}}/></div>
+            <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{currentUser?.xp} XP{rank.nextXp?` / ${rank.nextXp}`:""}</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div style={{fontSize:12,color:"var(--text3)",marginBottom:4}}>{lang==="ar"?"أيام متواصلة":"Day Streak"}</div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span className="streak-flame">🔥</span>
+            <span style={{fontSize:28,fontWeight:700,fontFamily:"JetBrains Mono"}}>{currentUser?.streak}</span>
+          </div>
+          <StreakCalendar streak={currentUser?.streak||0}/>
+        </div>
+        <div className="stat-card">
+          <div style={{fontSize:12,color:"var(--text3)",marginBottom:4}}>{lang==="ar"?"محلول":"Solved"}</div>
+          <div style={{fontSize:28,fontWeight:700,fontFamily:"JetBrains Mono",color:"var(--green)"}}>{userSolved.filter(s=>!s.startsWith("topic_")).length}</div>
+          <div style={{fontSize:12,color:"var(--text3)",marginTop:4}}>{lang==="ar"?"مسائل":"problems"}</div>
+        </div>
+        <div className="stat-card">
+          <div style={{fontSize:12,color:"var(--text3)",marginBottom:4}}>{lang==="ar"?"مواضيع بدأت":"Started Topics"}</div>
+          <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+            <span style={{fontSize:28,fontWeight:700,fontFamily:"JetBrains Mono",color:"var(--gold)"}}>{userStarted.length}</span>
+            <span style={{fontSize:14,color:"var(--green)",fontFamily:"JetBrains Mono"}}>/{userSolved.filter(s=>s.startsWith("topic_")).length}</span>
+          </div>
+          <div style={{fontSize:12,color:"var(--text3)",marginTop:4}}>{lang==="ar"?"بدأ / مكتمل":"started / done"}</div>
+        </div>
+      </div>
+      {/* Level selector */}
+      <h2 style={{fontSize:16,marginBottom:14}}>{lang==="ar"?"اختر مستوى":"Choose a Level"}</h2>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:28}}>
+        {LEVELS.map(lv=>(
+          <div key={lv.id} className="level-pill" style={{
+            background:selLevel===lv.id?lv.bg:"var(--bg2)",
+            color:selLevel===lv.id?lv.color:"var(--text2)",
+            borderColor:selLevel===lv.id?lv.border:"var(--border)",
+          }} onClick={()=>setSelLevel(selLevel===lv.id?null:lv.id)}>
+            {lv.icon} {lv.label[lang]}
+            <span style={{marginLeft:6,fontSize:11,opacity:0.7}}>({visibleTopics.filter(t=>t.level===lv.id).length})</span>
+          </div>
+        ))}
+      </div>
+      {selLevel&&(
+        <div className="fade-in">
+          <h2 style={{fontSize:16,marginBottom:14}}>{lang==="ar"?"المواضيع":"Topics"} — {LEVELS.find(l=>l.id===selLevel)?.label[lang]}</h2>
+          {levelTopics.length===0?(
+            <div style={{padding:"50px",textAlign:"center",color:"var(--text3)",background:"var(--bg2)",borderRadius:12,border:"1px dashed var(--border2)"}}>
+              {lang==="ar"?"لا توجد مواضيع بعد":"No topics yet"}
+            </div>
+          ):(
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:14}}>
+              {levelTopics.map(topic=>{
+                const probs=state.problems.filter(p=>p.topicId===topic.id);
+                const solved=probs.filter(p=>userSolved.includes(p.id)).length;
+                const done=userSolved.includes(`topic_${topic.id}`);
+                const started=userStarted.includes(topic.id);
+                const isPrivate=topic.visibility==="private";
+
+                // Determine status
+                let statusLabel, statusClass;
+                if(done){statusLabel=lang==="ar"?"مكتمل":"Completed";statusClass="status-completed";}
+                else if(started){statusLabel=lang==="ar"?"جاري":"In Progress";statusClass="status-started";}
+                else{statusLabel=lang==="ar"?"لم يبدأ":"Not Started";statusClass="status-not-started";}
+
+                return(
+                  <div key={topic.id} className={`topic-card ${done?"completed":started?"started":""}`} onClick={()=>setSelTopic(topic)}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                      <h3 style={{fontSize:15,fontWeight:600,flex:1,paddingRight:8}}>{topic.title?.[lang]||topic.title?.en}</h3>
+                      <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
+                        {isPrivate&&<span className="private-badge">🔒 {lang==="ar"?"خاص":"Private"}</span>}
+                        {done&&<span style={{color:"var(--green)",fontSize:16}}>✓</span>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                      <Stars value={topic.importance||0} size={13}/>
+                      <span className={`status-badge ${statusClass}`}>{statusLabel}</span>
+                    </div>
+                    <p style={{fontSize:13,color:"var(--text3)",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden",marginBottom:12}}>
+                      {topic.description?.[lang]||topic.description?.en||""}
+                    </p>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                      <div style={{fontSize:12,color:"var(--text3)",whiteSpace:"nowrap"}}>{solved}/{probs.length}</div>
+                      <div style={{background:"var(--bg4)",borderRadius:99,height:4,flex:1}}>
+                        <div style={{height:"100%",borderRadius:99,background:"var(--accent)",width:`${probs.length?(solved/probs.length)*100:0}%`,transition:"width 0.4s"}}/>
+                      </div>
+                    </div>
+                    {/* Start button */}
+                    {!done&&(
+                      <button
+                        className={`btn btn-sm ${started?"btn-started":"btn-start"}`}
+                        style={{width:"100%",justifyContent:"center"}}
+                        onClick={(e)=>startTopic(topic,e)}
+                      >
+                        {started
+                          ? (lang==="ar"?"⏳ جاري التعلم":"⏳ In Progress")
+                          : (lang==="ar"?"▶ ابدأ الموضوع":"▶ Start Topic")}
+                      </button>
+                    )}
+                    {done&&(
+                      <div style={{textAlign:"center",fontSize:12,color:"var(--green)",padding:"5px 0"}}>
+                        ✓ {lang==="ar"?"اكتمل الموضوع":"Topic Completed"}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+      {!selLevel&&(
+        <div style={{textAlign:"center",padding:"60px 0",color:"var(--text3)"}}>
+          <div style={{fontSize:40,marginBottom:12}}>⚡</div>
+          <div style={{fontSize:15}}>{lang==="ar"?"اختر مستوى لتبدأ":"Select a level to get started"}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── TOPIC VIEW ───────────────────────────────────────────────────────────────
+function TopicView({topic,state,update,currentUser,onBack,solveProblem,completeTopic,startTopic}){
+  const lang=state.lang;
+  const problems=state.problems.filter(p=>p.topicId===topic.id);
+  const userSolved=currentUser?.solvedProblems||[];
+  const userStarted=currentUser?.startedTopics||[];
+  const completed=userSolved.includes(`topic_${topic.id}`);
+  const started=userStarted.includes(topic.id);
+  const isPrivate=topic.visibility==="private";
+
+  // Determine status
+  let statusLabel, statusClass;
+  if(completed){statusLabel=lang==="ar"?"مكتمل":"Completed";statusClass="status-completed";}
+  else if(started){statusLabel=lang==="ar"?"جاري":"In Progress";statusClass="status-started";}
+  else{statusLabel=lang==="ar"?"لم يبدأ":"Not Started";statusClass="status-not-started";}
+
+  const content=topic.content?.[lang]||topic.content?.en;
+
+  return(
+    <div style={{padding:"28px 32px",maxWidth:960,margin:"0 auto"}} className="fade-in">
+      <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20}}>
+        <button className="btn btn-ghost btn-sm" onClick={onBack}>{lang==="ar"?"→ رجوع":"← Back"}</button>
+        <div style={{flex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <h1 style={{fontSize:21}}>{topic.title?.[lang]||topic.title?.en}</h1>
+            {isPrivate&&<span className="private-badge">🔒 {lang==="ar"?"خاص":"Private"}</span>}
+            <span className={`status-badge ${statusClass}`}>{statusLabel}</span>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginTop:4}}>
+            <Stars value={topic.importance||0} size={13}/>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          {!completed&&!started&&(
+            <button className="btn btn-start" onClick={(e)=>startTopic(topic,e)}>
+              ▶ {lang==="ar"?"ابدأ الموضوع":"Start Topic"}
+            </button>
+          )}
+          {started&&!completed&&(
+            <button className="btn btn-started" disabled>⏳ {lang==="ar"?"جاري":"In Progress"}</button>
+          )}
+          <button className={`btn ${completed?"btn-ghost":"btn-primary"}`} onClick={()=>completeTopic(topic)} disabled={completed}>
+            {completed?(lang==="ar"?"✓ مكتمل":"✓ Completed"):(lang==="ar"?"أكمل الموضوع":"Complete Topic")}
+          </button>
+        </div>
+      </div>
+
+      {/* Unified Content (text + videos + code all in one) */}
+      <div className="card" style={{padding:28,marginBottom:20}}>
+        {content?(
+          <div className="prose" dangerouslySetInnerHTML={{__html:content}}/>
+        ):(
+          <div style={{color:"var(--text3)",textAlign:"center",padding:40}}>{lang==="ar"?"لا يوجد محتوى بعد":"No content yet."}</div>
+        )}
+      </div>
+
+      {/* Resources */}
+      {topic.resources&&topic.resources.length>0&&(
+        <div className="card" style={{padding:20,marginBottom:20}}>
+          <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>📎 {lang==="ar"?"المصادر":"Resources"}</h3>
+          {topic.resources.map((r,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:i<topic.resources.length-1?"1px solid var(--border)":"none"}}>
+              <span style={{fontSize:18}}>📎</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:500}}>{r.title}</div>
+                {r.description&&<div style={{fontSize:12,color:"var(--text3)"}}>{r.description}</div>}
+              </div>
+              {r.url&&<a href={r.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">Open →</a>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Problems (at the bottom) */}
+      <div className="card" style={{overflow:"hidden"}}>
+        <div style={{padding:"14px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <h3 style={{fontSize:14,fontWeight:600}}>🧩 {lang==="ar"?"المسائل":"Problems"} <span style={{color:"var(--text3)",fontWeight:400}}>({problems.length})</span></h3>
+          {problems.length>0&&(
+            <div style={{fontSize:13,color:"var(--text3)"}}>
+              {problems.filter(p=>userSolved.includes(p.id)).length}/{problems.length} {lang==="ar"?"محلول":"solved"}
+            </div>
+          )}
+        </div>
+        {problems.length===0?(
+          <div style={{padding:40,textAlign:"center",color:"var(--text3)"}}>{lang==="ar"?"لا توجد مسائل":"No problems yet."}</div>
+        ):(
+          [...problems].sort((a,b)=>DIFF_ORDER.indexOf(a.difficulty)-DIFF_ORDER.indexOf(b.difficulty)).map(p=>{
+            const sv=userSolved.includes(p.id);
+            return(
+              <div key={p.id} className="problem-row">
+                <div className={`checkbox-custom ${sv?"checked":""}`} onClick={()=>solveProblem(p)}>
+                  {sv&&<span style={{color:"white",fontSize:11}}>✓</span>}
+                </div>
+                <DiffBadge diff={p.difficulty} lang={lang}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:500}}>{p.title?.[lang]||p.title?.en}</div>
+                  {p.source&&<div style={{fontSize:12,color:"var(--text3)"}}>{p.source}</div>}
+                </div>
+                <div style={{fontSize:12,color:"var(--text3)",fontFamily:"JetBrains Mono"}}>+{DIFF_XP[p.difficulty]}</div>
+                {p.url&&<a href={p.url} target="_blank" rel="noopener noreferrer" style={{color:"var(--accent)",fontSize:13}}>→</a>}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── LEADERBOARD ─────────────────────────────────────────────────────────────
+function LeaderboardPage({state}){
+  const lang=state.lang;
+  const sorted=[...state.users].sort((a,b)=>b.xp-a.xp);
+  const medals=["🥇","🥈","🥉"];
+  return(
+    <div style={{padding:"28px 32px",maxWidth:700,margin:"0 auto"}} className="fade-in">
+      <h1 style={{fontSize:22,marginBottom:6}}>{lang==="ar"?"لوحة المتصدرين":"Leaderboard"}</h1>
+      <p style={{marginBottom:24,fontSize:14}}>{lang==="ar"?"أفضل المبرمجين على المنصة":"Top coders on the platform"}</p>
+      <div className="card" style={{overflow:"hidden"}}>
+        {sorted.map((user,i)=>{
+          const rank=getXpRank(user.xp);
+          const isMe=user.id===state.currentUser;
+          return(
+            <div key={user.id} className="leaderboard-row" style={{background:isMe?"rgba(79,142,247,0.06)":"transparent",borderBottom:"1px solid var(--border)"}}>
+              <div style={{width:28,textAlign:"center",fontSize:i<3?20:14,color:"var(--text3)",fontFamily:"JetBrains Mono",fontWeight:600}}>
+                {i<3?medals[i]:`${i+1}`}
+              </div>
+              <Avatar user={user} size={36}/>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:600,fontSize:14}}>{user.name}{isMe&&<span style={{fontSize:11,color:"var(--accent)",marginLeft:6}}>(You)</span>}</div>
+                <div style={{fontSize:12,color:rank.color,fontWeight:500}}>{rank.name[lang]}</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                <span>🔥</span><span style={{fontFamily:"JetBrains Mono",fontSize:13}}>{user.streak}</span>
+              </div>
+              <div style={{textAlign:"right",minWidth:70}}>
+                <div style={{fontFamily:"JetBrains Mono",fontWeight:700,fontSize:15,color:rank.color}}>{user.xp.toLocaleString()}</div>
+                <div style={{fontSize:11,color:"var(--text3)"}}>XP</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── PROFILE ─────────────────────────────────────────────────────────────────
+function ProfilePage({state,currentUser}){
+  const lang=state.lang;
+  const rank=getXpRank(currentUser?.xp||0);
+  const solved=(currentUser?.solvedProblems||[]).filter(s=>!s.startsWith("topic_"));
+  const completedTopics=(currentUser?.solvedProblems||[]).filter(s=>s.startsWith("topic_"));
+  const startedTopics=currentUser?.startedTopics||[];
+  return(
+    <div style={{padding:"28px 32px",maxWidth:680,margin:"0 auto"}} className="fade-in">
+      <div className="card" style={{padding:28,marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:20,marginBottom:20}}>
+          <Avatar user={currentUser} size={64}/>
+          <div>
+            <h1 style={{fontSize:21}}>{currentUser?.name}</h1>
+            <RoleBadge role={currentUser?.role} lang={lang}/>
+            <div style={{color:rank.color,fontWeight:600,fontSize:14,marginTop:4}}>{rank.name[lang]}</div>
+          </div>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:6}}>
+          <span style={{color:"var(--text3)"}}>XP Progress</span>
+          <span style={{fontFamily:"JetBrains Mono"}}>{currentUser?.xp} / {rank.nextXp||"MAX"}</span>
+        </div>
+        <div className="xp-bar" style={{height:10}}><div className="xp-fill" style={{width:`${rank.pct}%`}}/></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+        {[
+          {label:{en:"Solved",ar:"محلول"},value:solved.length,icon:"✅",color:"var(--green)"},
+          {label:{en:"Streak",ar:"متواصل"},value:`${currentUser?.streak}d`,icon:"🔥",color:"var(--orange)"},
+          {label:{en:"Started",ar:"بدأت"},value:startedTopics.length,icon:"▶",color:"var(--gold)"},
+          {label:{en:"Topics",ar:"مكتملة"},value:completedTopics.length,icon:"📚",color:"var(--accent)"},
+        ].map((s,i)=>(
+          <div key={i} className="stat-card" style={{textAlign:"center"}}>
+            <div style={{fontSize:22,marginBottom:4}}>{s.icon}</div>
+            <div style={{fontSize:22,fontWeight:700,fontFamily:"JetBrains Mono",color:s.color}}>{s.value}</div>
+            <div style={{fontSize:12,color:"var(--text3)"}}>{s.label[lang]}</div>
+          </div>
+        ))}
+      </div>
+      <div className="card" style={{padding:20}}>
+        <h3 style={{marginBottom:12,fontSize:14}}>{lang==="ar"?"سجل النشاط (30 يوم)":"Activity (30 Days)"}</h3>
+        <StreakCalendar streak={currentUser?.streak||0}/>
+      </div>
+    </div>
+  );
+}
+
+// ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
+function AdminDashboard({state,update,currentUser}){
+  const lang=state.lang;
+  const[sub,setSub]=useState("topics");
+  const isAdmin=currentUser?.role==="admin";
+
+  const navItems=[
+    {id:"topics",label:{en:"Topics",ar:"المواضيع"},icon:"📚"},
+    {id:"problems",label:{en:"Problems",ar:"المسائل"},icon:"🧩"},
+    ...(isAdmin?[{id:"users",label:{en:"Users",ar:"المستخدمون"},icon:"👥"}]:[]),
+  ];
+
+  return(
+    <div style={{display:"flex",height:"calc(100vh - 58px)"}}>
+      <div style={{width:200,background:"var(--bg2)",borderRight:"1px solid var(--border)",padding:"16px 10px",flexShrink:0}}>
+        <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",padding:"0 8px 10px",letterSpacing:"0.08em"}}>
+          {lang==="ar"?"الإدارة":"ADMIN"}
+        </div>
+        {navItems.map(n=>(
+          <div key={n.id} className={`sidebar-item ${sub===n.id?"active":""}`} onClick={()=>setSub(n.id)}>
+            <span>{n.icon}</span>{n.label[lang]}
+          </div>
+        ))}
+      </div>
+      <div style={{flex:1,overflow:"auto",padding:"24px 28px"}}>
+        {sub==="topics"&&<AdminTopics state={state} update={update}/>}
+        {sub==="problems"&&<AdminProblems state={state} update={update}/>}
+        {sub==="users"&&isAdmin&&<AdminUsers state={state} update={update}/>}
+      </div>
+    </div>
+  );
+}
+
+// ─── PRIVACY TOGGLE COMPONENT ─────────────────────────────────────────────────
+function PrivacyToggle({value,onChange,lang}){
+  const isPublic=value!=="private";
+  return(
+    <div
+      className={`privacy-toggle ${isPublic?"public":"private"}`}
+      onClick={()=>onChange(isPublic?"private":"public")}
+      style={{userSelect:"none"}}
+    >
+      <span style={{fontSize:15}}>{isPublic?"🌍":"🔒"}</span>
+      <span>{isPublic
+        ?(lang==="ar"?"عام — يظهر للجميع":"Public — visible to all")
+        :(lang==="ar"?"خاص — للمشرفين فقط":"Private — admins only")}
+      </span>
+      <span style={{marginLeft:"auto",fontSize:11,opacity:0.6}}>{lang==="ar"?"انقر للتبديل":"click to toggle"}</span>
+    </div>
+  );
+}
+
+// ─── ADMIN TOPICS ─────────────────────────────────────────────────────────────
+function TopicModal({mode,topic,onClose,onSave,lang}){
+  const formRef=useRef({
+    titleEn:topic?.title?.en||"",
+    titleAr:topic?.title?.ar||"",
+    descEn:topic?.description?.en||"",
+    descAr:topic?.description?.ar||"",
+    level:topic?.level||"bronze",
+    importance:topic?.importance||3,
+    contentEn:topic?.content?.en||"",
+    contentAr:topic?.content?.ar||"",
+    visibility:topic?.visibility||"public",
+    resources:[...(topic?.resources||[])],
+  });
+  const[importance,setImportance]=useState(formRef.current.importance);
+  const[resources,setResources]=useState([...(topic?.resources||[])]);
+  const[activeLang,setActiveLang]=useState("en");
+  const[visibility,setVisibility]=useState(formRef.current.visibility);
+  const resRef=useRef({title:"",url:"",description:""});
+
+  function set(k,v){formRef.current[k]=v;}
+
+  function handleSave(){
+    onSave({
+      titleEn:formRef.current.titleEn,
+      titleAr:formRef.current.titleAr,
+      descEn:formRef.current.descEn,
+      descAr:formRef.current.descAr,
+      level:formRef.current.level,
+      importance,
+      contentEn:formRef.current.contentEn,
+      contentAr:formRef.current.contentAr,
+      visibility,
+      resources,
+    });
+  }
+
+  function addResource(){
+    const t=resRef.current.title,u=resRef.current.url,d=resRef.current.description;
+    if(!t)return;
+    setResources(r=>[...r,{title:t,url:u,description:d}]);
+    document.getElementById("res-title-input").value="";
+    document.getElementById("res-url-input").value="";
+    document.getElementById("res-desc-input").value="";
+    resRef.current={title:"",url:"",description:""};
+  }
+
+  return(
+    <Modal title={mode==="new"?(lang==="ar"?"موضوع جديد":"New Topic"):(lang==="ar"?"تعديل الموضوع":"Edit Topic")}
+      onClose={onClose} wide
+      footer={
+        <>
+          <button className="btn btn-ghost" onClick={onClose}>{lang==="ar"?"إلغاء":"Cancel"}</button>
+          <button className="btn btn-primary" onClick={handleSave}>{lang==="ar"?"حفظ":"Save"}</button>
+        </>
+      }>
+
+      {/* Privacy */}
+      <div style={{marginBottom:18}}>
+        <label style={{fontSize:13,color:"var(--text2)",display:"block",marginBottom:6}}>
+          {lang==="ar"?"الظهور":"Visibility"}
+        </label>
+        <PrivacyToggle value={visibility} onChange={v=>{setVisibility(v);set("visibility",v);}} lang={lang}/>
+        {visibility==="private"&&(
+          <div style={{marginTop:8,padding:"8px 12px",background:"rgba(79,142,247,0.08)",borderRadius:7,fontSize:12,color:"var(--text2)"}}>
+            🔒 {lang==="ar"?"هذا الموضوع مخفي عن المستخدمين العاديين، يظهر فقط للأدمن ومحرري المسائل.":"This topic is hidden from regular users. Only admins and problem setters can see it."}
+          </div>
+        )}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+        <Field label="Title (EN)" name="titleEn" defaultValue={formRef.current.titleEn} onChange={(_,v)=>set("titleEn",v)}/>
+        <Field label="العنوان (AR)" name="titleAr" defaultValue={formRef.current.titleAr} onChange={(_,v)=>set("titleAr",v)}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+        <Field label="Description (EN)" name="descEn" defaultValue={formRef.current.descEn} onChange={(_,v)=>set("descEn",v)} type="textarea" rows={2}/>
+        <Field label="الوصف (AR)" name="descAr" defaultValue={formRef.current.descAr} onChange={(_,v)=>set("descAr",v)} type="textarea" rows={2}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+        <Field label="Level" name="level" defaultValue={formRef.current.level} onChange={(_,v)=>set("level",v)}
+          options={LEVELS.map(l=><option key={l.id} value={l.id}>{l.icon} {l.label.en}</option>)}/>
+        <div>
+          <label style={{fontSize:13,color:"var(--text2)",display:"block",marginBottom:8}}>Importance</label>
+          <Stars value={importance} onChange={v=>{setImportance(v);formRef.current.importance=v;}}/>
+        </div>
+      </div>
+
+      {/* Unified Content Editor — videos & code inline */}
+      <div style={{marginBottom:16}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+          <div>
+            <label style={{fontSize:13,color:"var(--text2)"}}>Content</label>
+            <span style={{fontSize:11,color:"var(--text3)",marginLeft:8}}>{lang==="ar"?"يمكنك إدراج الفيديوهات والكودات داخل النص مباشرة":"Embed videos & code blocks inline"}</span>
+          </div>
+          <div style={{display:"flex",gap:4}}>
+            <button className={`lang-btn ${activeLang==="en"?"active":""}`} style={{padding:"3px 10px",fontSize:12}} onClick={()=>setActiveLang("en")}>EN</button>
+            <button className={`lang-btn ${activeLang==="ar"?"active":""}`} style={{padding:"3px 10px",fontSize:12}} onClick={()=>setActiveLang("ar")}>AR</button>
+          </div>
+        </div>
+        {activeLang==="en"?(
+          <RichEditor key="content-en" initialValue={formRef.current.contentEn} onChange={v=>set("contentEn",v)} lang="en"/>
+        ):(
+          <RichEditor key="content-ar" initialValue={formRef.current.contentAr} onChange={v=>set("contentAr",v)} lang="ar"/>
+        )}
+        <div style={{marginTop:6,padding:"8px 12px",background:"var(--bg4)",borderRadius:7,fontSize:12,color:"var(--text3)",display:"flex",gap:16}}>
+          <span>▶ Video — {lang==="ar"?"لإدراج يوتيوب داخل الشرح":"embed YouTube inline"}</span>
+          <span>&#60;/&#62; Block — {lang==="ar"?"لإدراج كود داخل الشرح":"embed code block inline"}</span>
+        </div>
+      </div>
+
+      {/* Resources */}
+      <div>
+        <label style={{fontSize:13,fontWeight:600,display:"block",marginBottom:8}}>📎 Resources</label>
+        {resources.map((r,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,background:"var(--bg3)",padding:"6px 10px",borderRadius:7}}>
+            <span style={{fontSize:12,flex:1,color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>📎 {r.title} {r.url&&`— ${r.url}`}</span>
+            <button className="btn btn-danger btn-sm" onClick={()=>setResources(resources.filter((_,j)=>j!==i))}>✕</button>
+          </div>
+        ))}
+        <div style={{display:"flex",gap:8}}>
+          <input id="res-title-input" className="input" style={{flex:1}} placeholder={lang==="ar"?"اسم المصدر":"Resource title"} onChange={e=>resRef.current.title=e.target.value}/>
+          <input id="res-url-input" className="input" style={{flex:2}} placeholder="URL (optional)" onChange={e=>resRef.current.url=e.target.value}/>
+          <input id="res-desc-input" className="input" style={{flex:1}} placeholder="Description" onChange={e=>resRef.current.description=e.target.value}/>
+          <button className="btn btn-ghost btn-sm" onClick={addResource}>+ Add</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function AdminTopics({state,update}){
+  const lang=state.lang;
+  const[modal,setModal]=useState(null);
+
+  function save(data){
+    const topic={
+      id:modal.mode==="edit"?modal.topic.id:`t_${Date.now()}`,
+      title:{en:data.titleEn,ar:data.titleAr},
+      description:{en:data.descEn,ar:data.descAr},
+      content:{en:data.contentEn,ar:data.contentAr},
+      level:data.level,importance:data.importance,
+      visibility:data.visibility||"public",
+      resources:data.resources,
+    };
+    update(s=>({...s,topics:modal.mode==="edit"?s.topics.map(x=>x.id===topic.id?topic:x):[...s.topics,topic]}));
+    setModal(null);
+  }
+
+  function del(id){
+    if(!window.confirm("Delete this topic and all its problems?"))return;
+    update(s=>({...s,topics:s.topics.filter(t=>t.id!==id),problems:s.problems.filter(p=>p.topicId!==id)}));
+  }
+
+  return(
+    <div className="slide-in">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <h2 style={{fontSize:18}}>{lang==="ar"?"المواضيع":"Topics"} <span style={{color:"var(--text3)",fontWeight:400,fontSize:14}}>({state.topics.length})</span></h2>
+        <button className="btn btn-primary" onClick={()=>setModal({mode:"new"})}>+ {lang==="ar"?"موضوع جديد":"New Topic"}</button>
+      </div>
+      {state.topics.length===0?(
+        <div style={{padding:60,textAlign:"center",border:"1px dashed var(--border2)",borderRadius:12,color:"var(--text3)"}}>
+          {lang==="ar"?"لا توجد مواضيع بعد":"No topics yet"}
+        </div>
+      ):(
+        <div className="card" style={{overflow:"hidden"}}>
+          {state.topics.map((t,i)=>{
+            const lv=LEVELS.find(l=>l.id===t.level);
+            const probs=state.problems.filter(p=>p.topicId===t.id).length;
+            const isPrivate=t.visibility==="private";
+            return(
+              <div key={t.id} style={{display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderBottom:i<state.topics.length-1?"1px solid var(--border)":"none"}}>
+                <span style={{fontSize:18}}>{lv?.icon}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:500,fontSize:14,display:"flex",alignItems:"center",gap:6}}>
+                    {t.title?.en}
+                    {isPrivate&&<span className="private-badge">🔒 Private</span>}
+                  </div>
+                  <div style={{fontSize:12,color:"var(--text3)"}}>{t.title?.ar} · {probs} {lang==="ar"?"مسألة":"problems"}</div>
+                </div>
+                <Stars value={t.importance||0} size={13}/>
+                <span style={{fontSize:11,fontWeight:700,color:lv?.color,background:lv?.bg,padding:"3px 10px",borderRadius:99,border:`1px solid ${lv?.border}`}}>{lv?.label.en}</span>
+                <button className="btn btn-ghost btn-sm" onClick={()=>setModal({mode:"edit",topic:t})}>✏️ Edit</button>
+                <button className="btn btn-danger btn-sm" onClick={()=>del(t.id)}>Delete</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {modal&&(
+        <TopicModal key={modal.mode+modal.topic?.id} mode={modal.mode} topic={modal.topic} lang={lang}
+          onClose={()=>setModal(null)} onSave={save}/>
+      )}
+    </div>
+  );
+}
+
+// ─── ADMIN PROBLEMS ───────────────────────────────────────────────────────────
+function ProblemModal({mode,problem,topics,onClose,onSave,lang}){
+  const fRef=useRef({
+    titleEn:problem?.title?.en||"",
+    titleAr:problem?.title?.ar||"",
+    topicId:problem?.topicId||topics[0]?.id||"",
+    difficulty:problem?.difficulty||"easy",
+    source:problem?.source||"",
+    url:problem?.url||"",
+  });
+  function set(k,v){fRef.current[k]=v;}
+
+  return(
+    <Modal title={mode==="new"?"New Problem":"Edit Problem"} onClose={onClose}
+      footer={
+        <>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={()=>onSave(fRef.current)}>Save</button>
+        </>
+      }>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+        <Field label="Title (EN)" name="titleEn" defaultValue={fRef.current.titleEn} onChange={(_,v)=>set("titleEn",v)}/>
+        <Field label="العنوان (AR)" name="titleAr" defaultValue={fRef.current.titleAr} onChange={(_,v)=>set("titleAr",v)}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+        <Field label="Topic" name="topicId" defaultValue={fRef.current.topicId} onChange={(_,v)=>set("topicId",v)}
+          options={topics.map(t=><option key={t.id} value={t.id}>{t.title?.en}</option>)}/>
+        <Field label="Difficulty" name="difficulty" defaultValue={fRef.current.difficulty} onChange={(_,v)=>set("difficulty",v)}
+          options={DIFF_ORDER.map(d=><option key={d} value={d}>{DIFF_LABELS[d].en} (+{DIFF_XP[d]} XP)</option>)}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <Field label="Source (e.g. Codeforces 800A)" name="source" defaultValue={fRef.current.source} onChange={(_,v)=>set("source",v)}/>
+        <Field label="Problem URL" name="url" defaultValue={fRef.current.url} onChange={(_,v)=>set("url",v)} placeholder="https://..."/>
+      </div>
+    </Modal>
+  );
+}
+
+function AdminProblems({state,update}){
+  const lang=state.lang;
+  const[modal,setModal]=useState(null);
+  const[filter,setFilter]=useState("all");
+
+  function save(data){
+    const p={
+      id:modal.mode==="edit"?modal.problem.id:`p_${Date.now()}`,
+      title:{en:data.titleEn,ar:data.titleAr},
+      topicId:data.topicId,difficulty:data.difficulty,
+      source:data.source,url:data.url,
+    };
+    update(s=>({...s,problems:modal.mode==="edit"?s.problems.map(x=>x.id===p.id?p:x):[...s.problems,p]}));
+    setModal(null);
+  }
+
+  const filtered=filter==="all"?state.problems:state.problems.filter(p=>p.topicId===filter);
+
+  return(
+    <div className="slide-in">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <h2 style={{fontSize:18}}>{lang==="ar"?"المسائل":"Problems"} <span style={{color:"var(--text3)",fontWeight:400,fontSize:14}}>({state.problems.length})</span></h2>
+        <button className="btn btn-primary" onClick={()=>setModal({mode:"new"})} disabled={state.topics.length===0}>
+          + {lang==="ar"?"مسألة جديدة":"New Problem"}
+        </button>
+      </div>
+      {state.topics.length===0&&<div style={{marginBottom:14,padding:12,background:"rgba(245,158,11,0.1)",borderRadius:8,fontSize:13,color:"#fbbf24"}}>⚠️ Add topics first before adding problems.</div>}
+      <div style={{marginBottom:14}}>
+        <select className="input" style={{maxWidth:260}} defaultValue="all" onChange={e=>setFilter(e.target.value)}>
+          <option value="all">All Topics</option>
+          {state.topics.map(t=><option key={t.id} value={t.id}>{t.title?.en}</option>)}
+        </select>
+      </div>
+      {filtered.length===0?(
+        <div style={{padding:60,textAlign:"center",border:"1px dashed var(--border2)",borderRadius:12,color:"var(--text3)"}}>
+          {state.topics.length===0?"Add topics first!":"No problems"}
+        </div>
+      ):(
+        <div className="card" style={{overflow:"hidden"}}>
+          {[...filtered].sort((a,b)=>DIFF_ORDER.indexOf(a.difficulty)-DIFF_ORDER.indexOf(b.difficulty)).map((p,i)=>{
+            const topic=state.topics.find(t=>t.id===p.topicId);
+            return(
+              <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:i<filtered.length-1?"1px solid var(--border)":"none"}}>
+                <DiffBadge diff={p.difficulty} lang={lang}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:500}}>{p.title?.en}</div>
+                  <div style={{fontSize:12,color:"var(--text3)"}}>{topic?.title?.en}{p.source&&` · ${p.source}`}</div>
+                </div>
+                <span style={{fontSize:12,fontFamily:"JetBrains Mono",color:"var(--text3)"}}>+{DIFF_XP[p.difficulty]}</span>
+                <button className="btn btn-ghost btn-sm" onClick={()=>setModal({mode:"edit",problem:p})}>✏️ Edit</button>
+                <button className="btn btn-danger btn-sm" onClick={()=>{if(window.confirm("Delete?"))update(s=>({...s,problems:s.problems.filter(x=>x.id!==p.id)}));}}>Delete</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {modal&&(
+        <ProblemModal key={modal.mode+modal.problem?.id} mode={modal.mode} problem={modal.problem}
+          topics={state.topics} lang={lang} onClose={()=>setModal(null)} onSave={save}/>
+      )}
+    </div>
+  );
+}
+
+// ─── ADMIN USERS ─────────────────────────────────────────────────────────────
+function UserModal({user,onClose,onSave,lang}){
+  const fRef=useRef({name:user.name,username:user.username,email:user.email,role:user.role,xp:user.xp,streak:user.streak});
+  function set(k,v){fRef.current[k]=v;}
+  return(
+    <Modal title="Edit User" onClose={onClose}
+      footer={<><button className="btn btn-ghost" onClick={onClose}>Cancel</button><button className="btn btn-primary" onClick={()=>onSave(fRef.current)}>Save</button></>}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+        <Field label="Name" name="name" defaultValue={fRef.current.name} onChange={(_,v)=>set("name",v)}/>
+        <Field label="Username" name="username" defaultValue={fRef.current.username} onChange={(_,v)=>set("username",v)}/>
+      </div>
+      <Field label="Email" name="email" defaultValue={fRef.current.email} onChange={(_,v)=>set("email",v)}/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginTop:14}}>
+        <Field label="Role" name="role" defaultValue={fRef.current.role} onChange={(_,v)=>set("role",v)}
+          options={Object.keys(ROLES).map(r=><option key={r} value={r}>{ROLES[r].label.en}</option>)}/>
+        <Field label="XP" name="xp" defaultValue={fRef.current.xp} type="number" onChange={(_,v)=>set("xp",+v)}/>
+        <Field label="Streak (days)" name="streak" defaultValue={fRef.current.streak} type="number" onChange={(_,v)=>set("streak",+v)}/>
+      </div>
+    </Modal>
+  );
+}
+
+function AdminUsers({state,update}){
+  const lang=state.lang;
+  const[editUser,setEditUser]=useState(null);
+
+  function save(data){
+    update(s=>({...s,users:s.users.map(u=>u.id===editUser.id?{...u,...data,xp:+data.xp,streak:+data.streak}:u)}));
+    setEditUser(null);
+  }
+
+  return(
+    <div className="slide-in">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <h2 style={{fontSize:18}}>{lang==="ar"?"المستخدمون":"Users"} <span style={{color:"var(--text3)",fontWeight:400,fontSize:14}}>({state.users.length})</span></h2>
+      </div>
+      <div className="card" style={{overflow:"hidden"}}>
+        {state.users.map((u,i)=>{
+          const rank=getXpRank(u.xp);
+          return(
+            <div key={u.id} style={{display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderBottom:i<state.users.length-1?"1px solid var(--border)":"none"}}>
+              <Avatar user={u} size={36}/>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:500,fontSize:14,display:"flex",alignItems:"center",gap:8}}>
+                  {u.name} <RoleBadge role={u.role} lang={lang}/>
+                </div>
+                <div style={{fontSize:12,color:"var(--text3)"}}>@{u.username} · {u.email}</div>
+              </div>
+              <div style={{textAlign:"center",minWidth:60}}>
+                <div style={{fontFamily:"JetBrains Mono",fontSize:14,fontWeight:700,color:rank.color}}>{u.xp}</div>
+                <div style={{fontSize:11,color:"var(--text3)"}}>XP</div>
+              </div>
+              <div>🔥 <span style={{fontFamily:"JetBrains Mono"}}>{u.streak}</span></div>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setEditUser(u)}>✏️ Edit</button>
+              {u.id!==state.currentUser&&(
+                <button className="btn btn-danger btn-sm" onClick={()=>{if(window.confirm("Delete user?"))update(s=>({...s,users:s.users.filter(x=>x.id!==u.id)}));}}>Delete</button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {editUser&&<UserModal key={editUser.id} user={editUser} lang={lang} onClose={()=>setEditUser(null)} onSave={save}/>}
+    </div>
+  );
+}
+
+// ─── APP ROOT ─────────────────────────────────────────────────────────────────
+export default function App(){
+  const[state,update]=useStore();
+  const currentUser=state.users.find(u=>u.id===state.currentUser);
+  const setPage=useCallback(p=>update(s=>({...s,page:p})),[update]);
+
+  return(
+    <>
+      <style>{css}</style>
+      <div style={{minHeight:"100vh",direction:state.lang==="ar"?"rtl":"ltr"}}>
+        <Navbar state={state} update={update} currentUser={currentUser} setPage={setPage}/>
+        {state.notif&&<Notification msg={state.notif.msg} type={state.notif.type} onDone={()=>update(s=>({...s,notif:null}))}/>}
+        {state.page==="home"&&<HomePage state={state} update={update} currentUser={currentUser}/>}
+        {state.page==="leaderboard"&&<LeaderboardPage state={state}/>}
+        {state.page==="profile"&&<ProfilePage state={state} currentUser={currentUser}/>}
+        {state.page==="admin"&&(currentUser?.role==="admin"||currentUser?.role==="setter")&&
+          <AdminDashboard state={state} update={update} currentUser={currentUser}/>}
+        {state.page==="admin"&&currentUser?.role==="user"&&(
+          <div style={{padding:80,textAlign:"center",color:"var(--text3)"}}>🔒 Access denied.</div>
+        )}
+      </div>
+    </>
+  );
+}
